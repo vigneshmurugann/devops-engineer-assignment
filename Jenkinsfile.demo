@@ -1,0 +1,67 @@
+pipeline {
+  agent {
+    kubernetes {
+      namespace 'jenkins'
+      serviceAccount 'jenkins'
+      defaultContainer 'python'
+      yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: python
+      image: python:3.12-slim
+      command:
+        - cat
+      tty: true
+    - name: kubectl
+      image: bitnami/kubectl:1.36.1
+      command:
+        - cat
+      tty: true
+'''
+    }
+  }
+
+  stages {
+    stage('Checkout Source') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Lint') {
+      steps {
+        sh 'python3 -m py_compile apps/api/main.py apps/api/tests/test_api.py'
+      }
+    }
+
+    stage('Unit Tests') {
+      steps {
+        sh 'python3 -m pip install --no-cache-dir -r apps/api/requirements.txt'
+        sh 'cd apps/api && python3 -m pytest'
+      }
+    }
+
+    stage('Validate Kubernetes Deployment') {
+      steps {
+        container('kubectl') {
+          sh 'kubectl -n devops-app rollout status deployment/postgres --timeout=120s'
+          sh 'kubectl -n devops-app rollout status deployment/api --timeout=120s'
+          sh 'kubectl -n devops-app rollout status deployment/web --timeout=120s'
+          sh 'kubectl -n devops-app get deploy,pods,svc,ingress -o wide'
+        }
+      }
+    }
+
+    stage('Application Smoke Test') {
+      steps {
+        container('kubectl') {
+          sh '''
+kubectl -n devops-app exec deploy/api -- python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/ready').read().decode())"
+'''
+        }
+      }
+    }
+  }
+}

@@ -446,6 +446,42 @@ dockerhub-username
 dockerhub-token
 ```
 
+### Local Jenkins demo pipeline
+
+The repository also includes `Jenkinsfile.demo`.
+
+Use `Jenkinsfile.demo` for a local interview demo because it does not require Docker Hub credentials or Docker socket access inside Jenkins. It validates the same deployment by:
+
+1. Checking out the GitHub repository.
+2. Running Python lint/compile checks.
+3. Running API unit tests.
+4. Checking Kubernetes rollout status for Postgres, API, and web.
+5. Running an API readiness smoke test inside the Kubernetes deployment.
+
+Before running this job, allow the Jenkins service account to inspect the app namespace:
+
+```bash
+kubectl -n devops-app create rolebinding jenkins-deployer --clusterrole=edit --serviceaccount=jenkins:jenkins --dry-run=client -o yaml | kubectl apply -f -
+```
+
+In Jenkins, create a Pipeline job with:
+
+```text
+Repository URL: https://github.com/vigneshmurugann/devops-engineer-assignment.git
+Branch: main
+Script Path: Jenkinsfile.demo
+```
+
+Expected result: the Jenkins job should finish successfully and show these stages as green:
+
+```text
+Checkout Source
+Lint
+Unit Tests
+Validate Kubernetes Deployment
+Application Smoke Test
+```
+
 ## 11. Monitoring and Logging
 
 ### Kubernetes Grafana
@@ -751,7 +787,9 @@ Use this order during the demo:
 9. Open Jenkins at `http://localhost:8081`.
 10. Open Grafana at `http://localhost:3001`.
 11. Open Prometheus at `http://localhost:9091`.
-12. Explain the `Jenkinsfile`, Kubernetes manifests, network policies, monitoring, and rollback command.
+12. Run the Jenkins job that uses `Jenkinsfile.demo`.
+13. Explain that `Jenkinsfile` is the production pipeline and `Jenkinsfile.demo` is the local demo pipeline.
+14. Explain the Kubernetes manifests, network policies, monitoring, and rollback command.
 
 ## 19. Screenshot Checklist
 
@@ -764,9 +802,10 @@ Capture these screenshots before submission or during the demo:
 5. Kubernetes deployments from `kubectl -n devops-app get deploy,pods,svc,ingress -o wide`.
 6. Kubernetes app at `http://localhost/`.
 7. Jenkins running at `http://localhost:8081`.
-8. Grafana dashboard at `http://localhost:3001`.
-9. Prometheus targets or alerts at `http://localhost:9091`.
-10. Output from `bash scripts/demo-check.sh`.
+8. Jenkins pipeline stages passing from `Jenkinsfile.demo`.
+9. Grafana dashboard at `http://localhost:3001`.
+10. Prometheus targets or alerts at `http://localhost:9091`.
+11. Output from `bash scripts/demo-check.sh`.
 
 ## 20. Stop and Restart Commands
 
