@@ -14,11 +14,6 @@ spec:
       command:
         - cat
       tty: true
-    - name: kubectl
-      image: bitnami/kubectl:latest
-      command:
-        - cat
-      tty: true
 '''
     }
   }
@@ -45,22 +40,91 @@ spec:
 
     stage('Validate Kubernetes Deployment') {
       steps {
-        container('kubectl') {
-          sh 'kubectl -n devops-app rollout status deployment/postgres --timeout=120s'
-          sh 'kubectl -n devops-app rollout status deployment/api --timeout=120s'
-          sh 'kubectl -n devops-app rollout status deployment/web --timeout=120s'
-          sh 'kubectl -n devops-app get deploy,pods,svc,ingress -o wide'
-        }
+        sh '''
+python3 - <<'PY'
+import json
+import os
+import ssl
+import urllib.request
+
+namespace = "devops-app"
+base_url = "https://kubernetes.default.svc"
+token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+
+with open(token_path, "r", encoding="utf-8") as token_file:
+    token = token_file.read().strip()
+
+context = ssl.create_default_context(cafile=ca_path)
+
+def get_json(path):
+    request = urllib.request.Request(
+        base_url + path,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    with urllib.request.urlopen(request, context=context, timeout=20) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+for name in ("postgres", "api", "web"):
+    deployment = get_json(f"/apis/apps/v1/namespaces/{namespace}/deployments/{name}")
+    desired = deployment["spec"].get("replicas", 1)
+    available = deployment.get("status", {}).get("availableReplicas", 0)
+    updated = deployment.get("status", {}).get("updatedReplicas", 0)
+    print(f"deployment/{name}: desired={desired}, updated={updated}, available={available}")
+    if available < desired or updated < desired:
+        raise SystemExit(f"deployment/{name} is not fully available")
+
+pods = get_json(f"/api/v1/namespaces/{namespace}/pods")["items"]
+for pod in pods:
+    phase = pod["status"].get("phase")
+    ready = all(
+        condition.get("type") != "Ready" or condition.get("status") == "True"
+        for condition in pod["status"].get("conditions", [])
+    )
+    print(f"pod/{pod['metadata']['name']}: phase={phase}, ready={ready}")
+    if phase != "Running" or not ready:
+        raise SystemExit(f"pod/{pod['metadata']['name']} is not ready")
+PY
+'''
       }
     }
 
     stage('Application Smoke Test') {
       steps {
-        container('kubectl') {
-          sh '''
-kubectl -n devops-app exec deploy/api -- python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/ready').read().decode())"
+        sh '''
+python3 - <<'PY'
+import json
+import ssl
+import urllib.request
+
+namespace = "devops-app"
+base_url = "https://kubernetes.default.svc"
+token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+
+with open(token_path, "r", encoding="utf-8") as token_file:
+    token = token_file.read().strip()
+
+context = ssl.create_default_context(cafile=ca_path)
+
+def get_json(path):
+    request = urllib.request.Request(
+        base_url + path,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    with urllib.request.urlopen(request, context=context, timeout=20) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+endpoints = get_json(f"/api/v1/namespaces/{namespace}/endpoints/api")
+addresses = []
+for subset in endpoints.get("subsets", []):
+    addresses.extend(subset.get("addresses", []))
+
+print(f"api service ready endpoint count={len(addresses)}")
+if not addresses:
+    raise SystemExit("api service has no ready endpoints")
+PY
 '''
-        }
       }
     }
   }

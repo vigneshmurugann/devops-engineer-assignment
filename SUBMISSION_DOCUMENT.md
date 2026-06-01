@@ -455,8 +455,8 @@ Use `Jenkinsfile.demo` for a local interview demo because it does not require Do
 1. Checking out the GitHub repository.
 2. Running Python lint/compile checks.
 3. Running API unit tests.
-4. Checking Kubernetes rollout status for Postgres, API, and web.
-5. Running an API readiness smoke test inside the Kubernetes deployment.
+4. Checking Kubernetes deployment and pod readiness through the in-cluster Kubernetes API.
+5. Checking that the API service has ready endpoints.
 
 Before running this job, allow the Jenkins service account to inspect the app namespace:
 
