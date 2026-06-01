@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: devops-platform-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  devops-platform.json: |
+    {
+      "title": "DevOps Assignment Platform",
+      "uid": "devops-platform",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "15s",
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Cluster CPU Utilization",
+          "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+          "targets": [{"expr": "sum(rate(container_cpu_usage_seconds_total{container!=''}[5m]))"}]
+        },
+        {
+          "type": "timeseries",
+          "title": "Cluster Memory Utilization",
+          "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+          "targets": [{"expr": "sum(container_memory_working_set_bytes{container!=''})"}]
+        },
+        {
+          "type": "timeseries",
+          "title": "Pod Restarts",
+          "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+          "targets": [{"expr": "sum by (pod) (increase(kube_pod_container_status_restarts_total[15m]))"}]
+        },
+        {
+          "type": "stat",
+          "title": "Application Availability",
+          "gridPos": {"x": 12, "y": 8, "w": 6, "h": 8},
+          "targets": [{"expr": "up{namespace='devops-app'}"}]
+        },
+        {
+          "type": "timeseries",
+          "title": "Application Response Times",
+          "gridPos": {"x": 18, "y": 8, "w": 6, "h": 8},
+          "targets": [{"expr": "histogram_quantile(0.95, sum(rate(api_request_duration_seconds_bucket[5m])) by (le))"}]
+        },
+        {
+          "type": "logs",
+          "title": "Application Logs",
+          "gridPos": {"x": 0, "y": 16, "w": 24, "h": 8},
+          "targets": [{"expr": "{namespace='devops-app'}"}]
+        }
+      ]
+    }

@@ -1,0 +1,22 @@
+controller:
+  admin:
+    username: admin
+    password: admin
+  serviceType: ClusterIP
+  installPlugins:
+    - kubernetes
+    - workflow-aggregator
+    - git
+    - configuration-as-code
+    - credentials-binding
+    - docker-workflow
+    - pipeline-stage-view
+  additionalPlugins:
+    - blueocean
+
+agent:
+  enabled: true
+
+persistence:
+  enabled: true
+  size: 8Gi

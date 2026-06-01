@@ -1,0 +1,9 @@
+resources:
+  - namespace.yaml
+  - api
+  - web
+  - postgres
+  - network-policies
+
+commonLabels:
+  app.kubernetes.io/part-of: devops-assignment

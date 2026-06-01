@@ -1,0 +1,46 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: devops-assignment-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: devops-assignment
+      rules:
+        - alert: HighCPUUsage
+          expr: sum(rate(container_cpu_usage_seconds_total{container!="",namespace="devops-app"}[5m])) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: High CPU usage in devops-app namespace
+        - alert: HighMemoryUsage
+          expr: sum(container_memory_working_set_bytes{container!="",namespace="devops-app"}) > 800000000
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: High memory usage in devops-app namespace
+        - alert: PodFailures
+          expr: kube_pod_status_phase{namespace="devops-app",phase=~"Failed|Unknown"} > 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Pod failure detected
+        - alert: ApplicationUnavailable
+          expr: up{namespace="devops-app"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Application metrics target is unavailable
+        - alert: ExcessiveErrorRates
+          expr: sum(rate(api_requests_total{status=~"5.."}[5m])) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Excessive API error rate

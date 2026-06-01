@@ -1,0 +1,9 @@
+resources:
+  - default-deny.yaml
+  - allow-dns.yaml
+  - allow-ingress-to-web.yaml
+  - allow-web-api.yaml
+  - allow-web-egress-api.yaml
+  - allow-api-postgres.yaml
+  - allow-api-egress-postgres.yaml
+  - allow-monitoring.yaml

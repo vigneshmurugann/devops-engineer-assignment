@@ -1,0 +1,12 @@
+namespace: devops-app
+
+resources:
+  - ../../base
+
+images:
+  - name: docker.io/your-dockerhub-user/devops-api
+    newName: docker.io/vignesh/devops-api
+    newTag: dev
+  - name: docker.io/your-dockerhub-user/devops-web
+    newName: docker.io/vignesh/devops-web
+    newTag: dev
